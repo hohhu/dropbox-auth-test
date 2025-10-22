@@ -4,67 +4,46 @@
 <meta charset="UTF-8">
 <title>Dropbox OAuth Test</title>
 <style>
-  body { font-family: sans-serif; padding: 20px; }
-  input { padding: 5px; width: 300px; margin-bottom: 10px; }
-  button { padding: 10px 20px; margin-bottom: 20px; }
-  pre { background: #f0f0f0; padding: 10px; }
+  body { font-family: sans-serif; padding: 20px; max-width: 600px; }
+  input { padding: 5px; margin: 5px 0; width: 100%; }
+  button { padding: 10px 20px; margin-top: 10px; font-size: 16px; }
+  pre { background: #f0f0f0; padding: 10px; white-space: pre-wrap; word-break: break-all; }
 </style>
 </head>
 <body>
 <h2>Dropbox OAuth Test</h2>
 
-<label>App Key:</label><br>
-<input type="text" id="appKey" placeholder="App Key"><br>
-
-<label>App Secret:</label><br>
-<input type="text" id="appSecret" placeholder="App Secret"><br>
-
-<label>Redirect URI:</label><br>
-<input type="text" id="redirectUri" placeholder="https://your-site.github.io/dropbox-auth-test/"><br>
-
+<label>App Key: <input id="appKey" type="text" placeholder="あなたのApp Key"></label>
+<label>App Secret: <input id="appSecret" type="text" placeholder="あなたのApp Secret"></label>
 <button id="authBtn">認可コード取得</button>
 
 <pre id="result"></pre>
+<button id="copyBtn" style="display:none;">アクセストークンをコピー</button>
 
 <script>
-document.getElementById("authBtn").onclick = () => {
-    const APP_KEY = document.getElementById("appKey").value;
-    const APP_SECRET = document.getElementById("appSecret").value;
-    const REDIRECT_URI = document.getElementById("redirectUri").value;
+const REDIRECT_URI = "https://hohhu.github.io/dropbox-auth-test/";
 
-    if (!APP_KEY || !APP_SECRET || !REDIRECT_URI) {
-        alert("全て入力してください");
+// 認可コード取得
+document.getElementById("authBtn").onclick = () => {
+    const appKey = document.getElementById("appKey").value.trim();
+    if (!appKey) {
+        alert("App Keyを入力してください");
         return;
     }
-
-    // 認可ページにリダイレクト
-    const url = `https://www.dropbox.com/oauth2/authorize?response_type=code&client_id=${APP_KEY}&redirect_uri=${REDIRECT_URI}`;
+    const url = `https://www.dropbox.com/oauth2/authorize?response_type=code&client_id=${appKey}&redirect_uri=${REDIRECT_URI}`;
     window.location.href = url;
 };
 
-// 認可コード取得後の処理
-window.onload = async () => {
-    const params = new URLSearchParams(window.location.search);
-    const code = params.get("code");
-    if (!code) return;
-
-    const APP_KEY = document.getElementById("appKey").value;
-    const APP_SECRET = document.getElementById("appSecret").value;
-    const REDIRECT_URI = document.getElementById("redirectUri").value;
-
-    if (!APP_KEY || !APP_SECRET || !REDIRECT_URI) {
-        document.getElementById("result").textContent = "まずキーとリダイレクトURIを入力してください";
-        return;
-    }
-
-    document.getElementById("result").textContent = "アクセストークン取得中…";
-
+// アクセストークン取得
+async function fetchToken(code, appKey, appSecret) {
+    const resultEl = document.getElementById("result");
+    resultEl.textContent = "アクセストークン取得中…";
     try {
         const body = new URLSearchParams({
             code,
             grant_type: "authorization_code",
-            client_id: APP_KEY,
-            client_secret: APP_SECRET,
+            client_id: appKey,
+            client_secret: appSecret,
             redirect_uri: REDIRECT_URI
         });
 
@@ -75,9 +54,34 @@ window.onload = async () => {
         });
 
         const data = await res.json();
-        document.getElementById("result").textContent = JSON.stringify(data, null, 2);
+        resultEl.textContent = JSON.stringify(data, null, 2);
+
+        if (data.access_token) {
+            const copyBtn = document.getElementById("copyBtn");
+            copyBtn.style.display = "inline-block";
+            copyBtn.onclick = () => {
+                navigator.clipboard.writeText(data.access_token);
+                copyBtn.textContent = "コピーしました!";
+            };
+        }
     } catch (e) {
-        document.getElementById("result").textContent = "エラー: " + e;
+        resultEl.textContent = "エラー: " + e;
+    }
+}
+
+// ページ読み込み時
+window.onload = () => {
+    const params = new URLSearchParams(window.location.search);
+    const code = params.get("code");
+
+    if (code) {
+        const appKey = prompt("App Keyを入力してください");
+        const appSecret = prompt("App Secretを入力してください");
+        if (appKey && appSecret) {
+            fetchToken(code, appKey, appSecret);
+        } else {
+            alert("App KeyとApp Secretが必要です");
+        }
     }
 };
 </script>
