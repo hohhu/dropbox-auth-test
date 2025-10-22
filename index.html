@@ -1,76 +1,85 @@
 <!DOCTYPE html>
 <html lang="ja">
 <head>
-  <meta charset="UTF-8" />
-  <title>Dropbox OAuth Test</title>
-  <style>
-    body {
-      font-family: system-ui, sans-serif;
-      margin: 2em;
-    }
-    button {
-      padding: 10px 16px;
-      font-size: 16px;
-    }
-    pre {
-      background: #f6f8fa;
-      padding: 10px;
-      border-radius: 6px;
-      white-space: pre-wrap;
-      word-break: break-word;
-    }
-  </style>
+<meta charset="UTF-8">
+<title>Dropbox OAuth Test</title>
+<style>
+  body { font-family: sans-serif; padding: 20px; }
+  input { padding: 5px; width: 300px; margin-bottom: 10px; }
+  button { padding: 10px 20px; margin-bottom: 20px; }
+  pre { background: #f0f0f0; padding: 10px; }
+</style>
 </head>
 <body>
-  <h2>Dropbox OAuth 2.0 認証テスト</h2>
+<h2>Dropbox OAuth Test</h2>
 
-  <p>以下のボタンを押してDropboxにログインし、アクセストークンを取得します。</p>
-  <button id="authBtn">Dropboxにログイン</button>
+<label>App Key:</label><br>
+<input type="text" id="appKey" placeholder="App Key"><br>
 
-  <h3>結果:</h3>
-  <pre id="output">（ここに結果が表示されます）</pre>
+<label>App Secret:</label><br>
+<input type="text" id="appSecret" placeholder="App Secret"><br>
 
-  <script>
-    const CLIENT_ID = "あなたの App key"; // ←例: czsg6qaf95ffvh3
-    const REDIRECT_URI = "https://hohhu.github.io/dropbox-auth-test/";
+<label>Redirect URI:</label><br>
+<input type="text" id="redirectUri" placeholder="https://your-site.github.io/dropbox-auth-test/"><br>
 
-    // Dropbox認証ページへリダイレクト
-    document.getElementById("authBtn").addEventListener("click", () => {
-      const authUrl = `https://www.dropbox.com/oauth2/authorize?client_id=${CLIENT_ID}&response_type=code&redirect_uri=${encodeURIComponent(REDIRECT_URI)}&token_access_type=offline`;
-      window.location.href = authUrl;
-    });
+<button id="authBtn">認可コード取得</button>
 
-    // 認可コードをURLから取得
+<pre id="result"></pre>
+
+<script>
+document.getElementById("authBtn").onclick = () => {
+    const APP_KEY = document.getElementById("appKey").value;
+    const APP_SECRET = document.getElementById("appSecret").value;
+    const REDIRECT_URI = document.getElementById("redirectUri").value;
+
+    if (!APP_KEY || !APP_SECRET || !REDIRECT_URI) {
+        alert("全て入力してください");
+        return;
+    }
+
+    // 認可ページにリダイレクト
+    const url = `https://www.dropbox.com/oauth2/authorize?response_type=code&client_id=${APP_KEY}&redirect_uri=${REDIRECT_URI}`;
+    window.location.href = url;
+};
+
+// 認可コード取得後の処理
+window.onload = async () => {
     const params = new URLSearchParams(window.location.search);
     const code = params.get("code");
+    if (!code) return;
 
-    if (code) {
-      document.getElementById("output").textContent = "認可コードを取得しました。トークン発行中...";
+    const APP_KEY = document.getElementById("appKey").value;
+    const APP_SECRET = document.getElementById("appSecret").value;
+    const REDIRECT_URI = document.getElementById("redirectUri").value;
 
-      // トークン発行をDropbox API経由で行う
-      const data = new URLSearchParams({
-        code: code,
-        grant_type: "authorization_code",
-        client_id: CLIENT_ID,
-        redirect_uri: REDIRECT_URI
-      });
-
-      fetch("https://api.dropboxapi.com/oauth2/token", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/x-www-form-urlencoded"
-        },
-        body: data
-      })
-        .then(res => res.json())
-        .then(json => {
-          document.getElementById("output").textContent = JSON.stringify(json, null, 2);
-          console.log(json);
-        })
-        .catch(err => {
-          document.getElementById("output").textContent = "エラー: " + err;
-        });
+    if (!APP_KEY || !APP_SECRET || !REDIRECT_URI) {
+        document.getElementById("result").textContent = "まずキーとリダイレクトURIを入力してください";
+        return;
     }
-  </script>
+
+    document.getElementById("result").textContent = "アクセストークン取得中…";
+
+    try {
+        const body = new URLSearchParams({
+            code,
+            grant_type: "authorization_code",
+            client_id: APP_KEY,
+            client_secret: APP_SECRET,
+            redirect_uri: REDIRECT_URI
+        });
+
+        const res = await fetch("https://api.dropbox.com/oauth2/token", {
+            method: "POST",
+            headers: { "Content-Type": "application/x-www-form-urlencoded" },
+            body
+        });
+
+        const data = await res.json();
+        document.getElementById("result").textContent = JSON.stringify(data, null, 2);
+    } catch (e) {
+        document.getElementById("result").textContent = "エラー: " + e;
+    }
+};
+</script>
 </body>
 </html>
