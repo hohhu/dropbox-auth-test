@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <title>Dropbox OAuth Test</title>
+  <style>
+    body {
+      font-family: system-ui, sans-serif;
+      margin: 2em;
+    }
+    button {
+      padding: 10px 16px;
+      font-size: 16px;
+    }
+    pre {
+      background: #f6f8fa;
+      padding: 10px;
+      border-radius: 6px;
+      white-space: pre-wrap;
+      word-break: break-word;
+    }
+  </style>
+</head>
+<body>
+  <h2>Dropbox OAuth 2.0 認証テスト</h2>
+
+  <p>以下のボタンを押してDropboxにログインし、アクセストークンを取得します。</p>
+  <button id="authBtn">Dropboxにログイン</button>
+
+  <h3>結果:</h3>
+  <pre id="output">（ここに結果が表示されます）</pre>
+
+  <script>
+    const CLIENT_ID = "あなたの App key"; // ←例: czsg6qaf95ffvh3
+    const REDIRECT_URI = "https://hohhu.github.io/dropbox-auth-test/";
+
+    // Dropbox認証ページへリダイレクト
+    document.getElementById("authBtn").addEventListener("click", () => {
+      const authUrl = `https://www.dropbox.com/oauth2/authorize?client_id=${CLIENT_ID}&response_type=code&redirect_uri=${encodeURIComponent(REDIRECT_URI)}&token_access_type=offline`;
+      window.location.href = authUrl;
+    });
+
+    // 認可コードをURLから取得
+    const params = new URLSearchParams(window.location.search);
+    const code = params.get("code");
+
+    if (code) {
+      document.getElementById("output").textContent = "認可コードを取得しました。トークン発行中...";
+
+      // トークン発行をDropbox API経由で行う
+      const data = new URLSearchParams({
+        code: code,
+        grant_type: "authorization_code",
+        client_id: CLIENT_ID,
+        redirect_uri: REDIRECT_URI
+      });
+
+      fetch("https://api.dropboxapi.com/oauth2/token", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/x-www-form-urlencoded"
+        },
+        body: data
+      })
+        .then(res => res.json())
+        .then(json => {
+          document.getElementById("output").textContent = JSON.stringify(json, null, 2);
+          console.log(json);
+        })
+        .catch(err => {
+          document.getElementById("output").textContent = "エラー: " + err;
+        });
+    }
+  </script>
+</body>
+</html>
